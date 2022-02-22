@@ -9,6 +9,8 @@ import dev.onyxstudios.cca.api.v3.component.ComponentKey;
 import dev.onyxstudios.cca.api.v3.component.ComponentRegistryV3;
 import dev.onyxstudios.cca.api.v3.entity.EntityComponentFactoryRegistry;
 import dev.onyxstudios.cca.api.v3.entity.EntityComponentInitializer;
+import dev.onyxstudios.cca.api.v3.item.ItemComponentFactoryRegistry;
+import dev.onyxstudios.cca.api.v3.item.ItemComponentInitializer;
 import fuzs.deathfinder.core.capability.data.CapabilityComponent;
 import fuzs.deathfinder.core.capability.data.CapabilityFactory;
 import fuzs.deathfinder.core.capability.data.PlayerRespawnStrategy;
@@ -18,17 +20,15 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.function.Predicate;
 
 /**
  * helper object for registering and attaching mod capabilities, needs to be extended by every mod individually
  * this basically is the same as {@link fuzs.puzzleslib.registry.RegistryManager}
  */
-public class CapabilityController implements EntityComponentInitializer, BlockComponentInitializer {
+public class CapabilityController implements EntityComponentInitializer, BlockComponentInitializer, ItemComponentInitializer {
     /**
      * capability controllers are stored for each mod separately to avoid concurrency issues, might not be need though
      */
@@ -41,7 +41,7 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
     /**
      * internal storage for registering capability entries
      */
-    private final Multimap<Class<?>, CapabilityData<?, ? extends CapabilityComponent>> typeToData = ArrayListMultimap.create();
+    private final Multimap<Class<?>, CapabilityData> typeToData = ArrayListMultimap.create();
 
     /**
      * invoked by cardinal components entry point via reflection
@@ -113,19 +113,19 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
 //        return capability;
 //    }
 //
-//    /**
-//     * register capability to {@link ItemStack} objects
-//     * @param path path for internal name of this capability, will be used for serialization
-//     * @param type interface for this capability
-//     * @param factory capability factory
-//     * @param filter filter for <code>objectType</code>
-//     * @param token capability token required to get capability instance from capability manager
-//     * @param <T> capability type
-//     * @return capability instance from capability manager
-//     */
-//    public <T extends CapabilityComponent> Capability<T> registerItemStackCapability(String path, Class<T> type, Supplier<T> factory, Predicate<Object> filter, CapabilityToken<T> token) {
-//        return this.registerCapability(ItemStack.class, path, type, factory, filter, token);
-//    }
+    /**
+     * register capability to {@link ItemStack} objects
+     * @param path path for internal name of this capability, will be used for serialization
+     * @param type interface for this capability
+     * @param factory capability factory
+     * @param filter filter for <code>objectType</code>
+     * @param token capability token required to get capability instance from capability manager
+     * @param <T> capability type
+     * @return capability instance from capability manager
+     */
+    public <T extends CapabilityComponent> ComponentKey<T> registerItemCapability(String path, Class<T> type, Supplier<T> factory, Predicate<Object> filter, CapabilityToken<T> token) {
+        return this.registerCapability(ItemStack.class, path, type, factory, filter, token);
+    }
 
     /**
      * register capability to {@link Entity} objects
@@ -136,9 +136,9 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
      * @param <T> capability type
      * @return capability instance from capability manager
      */
-    public <T extends CapabilityComponent> ComponentKey<T> registerEntityCapability(String path, Class<T> capabilityType, CapabilityFactory<Entity, T> capabilityFactory, Predicate<Class<Entity>> clazzFilter) {
+    public <T extends CapabilityComponent> ComponentKey<T> registerEntityCapability(String path, Class<Entity> baseType, Class<T> capabilityType, CapabilityFactory<Entity, T> capabilityFactory) {
         final ComponentKey<T> componentKey = ComponentRegistryV3.INSTANCE.getOrCreate(this.locate(path), capabilityType);
-        this.typeToData.put(Entity.class, new DefaultCapabilityData<>(componentKey, capabilityType, capabilityFactory, clazzFilter));
+        this.typeToData.put(Entity.class, new CapabilityData<>(componentKey, baseType, capabilityType, capabilityFactory));
         return componentKey;
     }
 
@@ -153,9 +153,9 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
      * @param <T> capability type
      * @return capability instance from capability manager
      */
-    public <T extends CapabilityComponent> ComponentKey<T> registerPlayerCapability(String path, Class<T> capabilityType, CapabilityFactory<Player, T> capabilityFactory, Predicate<Class<Player>> clazzFilter, PlayerRespawnStrategy respawnStrategy) {
+    public <T extends CapabilityComponent> ComponentKey<T> registerPlayerCapability(String path, Class<T> capabilityType, CapabilityFactory<Player, T> capabilityFactory, PlayerRespawnStrategy respawnStrategy) {
         final ComponentKey<T> componentKey = ComponentRegistryV3.INSTANCE.getOrCreate(this.locate(path), capabilityType);
-        this.typeToData.put(Player.class, new PlayerCapabilityData<>(componentKey, capabilityType, capabilityFactory, clazzFilter, respawnStrategy));
+        this.typeToData.put(Player.class, new CapabilityData<>(componentKey, Player.class, capabilityType, capabilityFactory, respawnStrategy));
         return componentKey;
     }
 
@@ -168,18 +168,11 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
 
     @SuppressWarnings("unchecked")
     private static void registerEntityComponentFactories(CapabilityController controller, EntityComponentFactoryRegistry registry) {
-        for (DefaultCapabilityData<Entity, CapabilityComponent> data : (Collection<DefaultCapabilityData<Entity, CapabilityComponent>>) (Collection<?>) controller.typeToData.get(Entity.class)) {
-            registry.beginRegistration(Entity.class, data.capabilityKey())
-                    .filter((Predicate<Class<? extends Entity>>) (Predicate<?>) data.filter())
-                    .impl(data.capabilityType())
-                    .end(data.capabilityFactory());
+        for (CapabilityData<Entity, CapabilityComponent> data : (Collection<CapabilityData<Entity, CapabilityComponent>>) (Collection<?>) controller.typeToData.get(Entity.class)) {
+            registry.registerFor(data.baseType(), data.capabilityKey(), data.capabilityFactory());
         }
         for (CapabilityData<Player, CapabilityComponent> data : (Collection<CapabilityData<Player, CapabilityComponent>>) (Collection<?>) controller.typeToData.get(Player.class)) {
-            registry.beginRegistration(Player.class, data.capabilityKey())
-                    .filter((Predicate<Class<? extends Player>>) (Predicate<?>) data.filter())
-                    .impl(data.capabilityType())
-                    .respawnStrategy(((PlayerCapabilityData<?, ?>) data).respawnStrategy().toComponentStrategy())
-                    .end(data.capabilityFactory());
+            registry.registerForPlayers(data.capabilityKey(), data.capabilityFactory(), data.respawnStrategy().toComponentStrategy());
         }
     }
 
@@ -252,29 +245,17 @@ public class CapabilityController implements EntityComponentInitializer, BlockCo
 
     }
 
+    @Override
+    public void registerItemComponentFactories(ItemComponentFactoryRegistry registry) {
+
+    }
+
     /**
      * just a data class for all the things we need when registering capabilities...
      */
-    private static record DefaultCapabilityData<T, C extends CapabilityComponent>(ComponentKey<C> capabilityKey, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory, Predicate<Class<T>> filter) implements CapabilityData<T, C> {
-        @Override
-        public @Nullable PlayerRespawnStrategy respawnStrategy() {
-            return null;
+    private static record CapabilityData<T, C extends CapabilityComponent>(ComponentKey<C> capabilityKey, Class<T> baseType, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory, PlayerRespawnStrategy respawnStrategy) {
+        public CapabilityData(ComponentKey<C> capabilityKey, Class<T> baseType, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory) {
+            this(capabilityKey, baseType, capabilityType, capabilityFactory, PlayerRespawnStrategy.ALWAYS_COPY);
         }
-    }
-
-    private static record PlayerCapabilityData<T, C extends CapabilityComponent>(ComponentKey<C> capabilityKey, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory, Predicate<Class<T>> filter, PlayerRespawnStrategy respawnStrategy) implements CapabilityData<T, C> {
-    }
-
-    private interface CapabilityData<T, C extends CapabilityComponent> {
-        ComponentKey<C> capabilityKey();
-
-        Class<C> capabilityType();
-
-        CapabilityFactory<T, C> capabilityFactory();
-
-        Predicate<Class<T>> filter();
-
-        @Nullable
-        PlayerRespawnStrategy respawnStrategy();
     }
 }

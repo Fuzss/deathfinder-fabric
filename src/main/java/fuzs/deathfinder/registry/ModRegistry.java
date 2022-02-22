@@ -9,7 +9,7 @@ import fuzs.deathfinder.core.capability.data.PlayerRespawnStrategy;
 
 public class ModRegistry {
     private static final CapabilityController CAPABILITIES = CapabilityController.of(DeathFinder.MOD_ID);
-    public static final ComponentKey<PlayerDeathTracker> PLAYER_DEATH_TRACKER_CAPABILITY = CAPABILITIES.registerPlayerCapability("death_tracker", PlayerDeathTracker.class, player -> new PlayerDeathTrackerImpl(), clazz -> true, PlayerRespawnStrategy.ALWAYS_COPY);
+    public static final ComponentKey<PlayerDeathTracker> PLAYER_DEATH_TRACKER_CAPABILITY = CAPABILITIES.registerPlayerCapability("death_tracker", PlayerDeathTracker.class, player -> new PlayerDeathTrackerImpl(), PlayerRespawnStrategy.ALWAYS_COPY);
 
     public static void touch() {
 

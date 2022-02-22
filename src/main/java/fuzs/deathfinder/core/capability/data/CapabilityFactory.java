@@ -4,7 +4,7 @@ import dev.onyxstudios.cca.api.v3.component.Component;
 import dev.onyxstudios.cca.api.v3.component.ComponentFactory;
 
 @FunctionalInterface
-public interface CapabilityFactory<T, C extends Component> extends ComponentFactory<T, C> {
+public interface CapabilityFactory<T, C extends CapabilityComponent> extends ComponentFactory<T, C> {
     C create(T t);
 
     @Override
