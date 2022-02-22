@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "${modId}",
+  "version": "${modVersion}",
+
+  "name": "${modName}",
+  "description": "${modDescription}",
+  "authors": [
+    "${modAuthor}"
+  ],
+  "contact": {
+    "homepage": "${modPageUrl}",
+    "issues": "${modIssueUrl}",
+    "sources": "${modSourceUrl}"
+  },
+
+  "license": "Mozilla Public License 2.0",
+  "icon": "mod_logo.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "${mainEntryPoint}"
+    ],
+    "client": [
+      "${clientEntryPoint}"
+    ],
+    "cardinal-components": [
+      "${capabilityController}"
+    ]
+  },
+  "mixins": [
+    "META-INF/${modId}.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=${minFabricVersion}",
+    "fabric": ">=${minFabricApiVersion}",
+    "puzzleslib": ">=${minPuzzlesVersion}",
+    "minecraft": ">=${minMinecraftVersion} <${nextMinecraftVersion}",
+    "java": ">=17",
+    "cardinal-components-base": "*"
+  },
+
+  "custom": {
+    "cardinal-components": [
+        "${modId}:death_tracker"
+    ]
+  }
+}
