@@ -7,6 +7,7 @@ import dev.onyxstudios.cca.api.v3.block.BlockComponentFactoryRegistry;
 import dev.onyxstudios.cca.api.v3.block.BlockComponentInitializer;
 import dev.onyxstudios.cca.api.v3.chunk.ChunkComponentFactoryRegistry;
 import dev.onyxstudios.cca.api.v3.chunk.ChunkComponentInitializer;
+import dev.onyxstudios.cca.api.v3.component.ComponentFactory;
 import dev.onyxstudios.cca.api.v3.component.ComponentKey;
 import dev.onyxstudios.cca.api.v3.component.ComponentRegistryV3;
 import dev.onyxstudios.cca.api.v3.entity.EntityComponentFactoryRegistry;
@@ -16,7 +17,6 @@ import dev.onyxstudios.cca.api.v3.item.ItemComponentInitializer;
 import dev.onyxstudios.cca.api.v3.world.WorldComponentFactoryRegistry;
 import dev.onyxstudios.cca.api.v3.world.WorldComponentInitializer;
 import fuzs.deathfinder.core.capability.data.CapabilityComponent;
-import fuzs.deathfinder.core.capability.data.CapabilityFactory;
 import fuzs.deathfinder.core.capability.data.ItemCapabilityComponent;
 import fuzs.deathfinder.core.capability.data.PlayerRespawnStrategy;
 import fuzs.puzzleslib.PuzzlesLib;
@@ -32,6 +32,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -39,7 +40,7 @@ import java.util.function.Predicate;
  * helper object for registering and attaching mod capabilities, needs to be extended by every mod individually
  * this basically is the same as {@link fuzs.puzzleslib.registry.RegistryManager}
  */
-public class CapabilityController implements ItemComponentInitializer, EntityComponentInitializer, BlockComponentInitializer, WorldComponentInitializer, ChunkComponentInitializer {
+public class CapabilityController implements ItemComponentInitializer, EntityComponentInitializer, BlockComponentInitializer, ChunkComponentInitializer, WorldComponentInitializer {
     /**
      * capability controllers are stored for each mod separately to avoid concurrency issues, might not be need though
      */
@@ -52,7 +53,7 @@ public class CapabilityController implements ItemComponentInitializer, EntityCom
     /**
      * internal storage for registering capability entries
      */
-    private final Multimap<Class<?>, ComponentFactoryRegistration<?>> typeToRegistration = ArrayListMultimap.create();
+    private final Multimap<Class<?>, Consumer<Object>> typeToRegistration = ArrayListMultimap.create();
 
     /**
      * invoked by cardinal components entry point via reflection
@@ -80,32 +81,99 @@ public class CapabilityController implements ItemComponentInitializer, EntityCom
      * @param <C> capability type
      * @return capability instance from capability manager
      */
-    public <C extends ItemCapabilityComponent> ComponentKey<C> registerItemCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<ItemStack, C> capabilityFactory, Item item) {
-        return this.registerCapability(ItemStack.class, capabilityKey, capabilityType, componentKey -> (ItemComponentFactoryRegistry registry) -> registry.register(item, componentKey, capabilityFactory));
+    public <C extends ItemCapabilityComponent> ComponentKey<C> registerItemCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<ItemStack, C> capabilityFactory, Item item) {
+        return this.registerCapability(ItemStack.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof ItemComponentFactoryRegistry registry) registry.register(item, componentKey, capabilityFactory);
+        });
     }
 
-    public <C extends ItemCapabilityComponent> ComponentKey<C> registerItemCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<ItemStack, C> capabilityFactory, Predicate<Item> itemFilter) {
-        return this.registerCapability(ItemStack.class, capabilityKey, capabilityType, componentKey -> (ItemComponentFactoryRegistry registry) -> registry.register(itemFilter, componentKey, capabilityFactory));
+    /**
+     * register capability to {@link ItemStack} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param itemFilter filter for item, can be used for matching class and instanceof
+     * @param <C> capability type
+     * @return capability instance from capability manager
+     */
+    public <C extends ItemCapabilityComponent> ComponentKey<C> registerItemCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<ItemStack, C> capabilityFactory, Predicate<Item> itemFilter) {
+        return this.registerCapability(ItemStack.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof ItemComponentFactoryRegistry registry) registry.register(itemFilter, componentKey, capabilityFactory);
+        });
     }
 
-    public <T extends Entity, C extends CapabilityComponent> ComponentKey<C> registerEntityCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory, Class<T> entityType) {
-        return this.registerCapability(Entity.class, capabilityKey, capabilityType, componentKey -> (EntityComponentFactoryRegistry registry) -> registry.registerFor(entityType, componentKey, capabilityFactory));
+    /**
+     * register capability to {@link Entity} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param entityType        entity class to match
+     * @param <C> capability type
+     * @return capability instance from capability manager
+     */
+    public <T extends Entity, C extends CapabilityComponent> ComponentKey<C> registerEntityCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<T, C> capabilityFactory, Class<T> entityType) {
+        return this.registerCapability(Entity.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof EntityComponentFactoryRegistry registry) registry.registerFor(entityType, componentKey, capabilityFactory);
+        });
     }
 
-    public <C extends CapabilityComponent> ComponentKey<C> registerPlayerCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<Player, C> capabilityFactory, PlayerRespawnStrategy respawnStrategy) {
-        return this.registerCapability(Entity.class, capabilityKey, capabilityType, componentKey -> (EntityComponentFactoryRegistry registry) -> registry.registerForPlayers(componentKey, capabilityFactory, respawnStrategy.toComponentStrategy()));
+    /**
+     * register capability to {@link Entity} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param respawnStrategy   strategy to use when returning from the end dimension or after dying
+     * @param <C> capability type
+     * @return capability instance from capability manager
+     */
+    public <C extends CapabilityComponent> ComponentKey<C> registerPlayerCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<Player, C> capabilityFactory, PlayerRespawnStrategy respawnStrategy) {
+        return this.registerCapability(Entity.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof EntityComponentFactoryRegistry registry) registry.registerForPlayers(componentKey, capabilityFactory, respawnStrategy.toComponentStrategy());
+        });
     }
 
-    public <T extends BlockEntity, C extends CapabilityComponent> ComponentKey<C> registerBlockEntityCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<T, C> capabilityFactory, Class<T> blockEntityType) {
-        return this.registerCapability(BlockEntity.class, capabilityKey, capabilityType, componentKey -> (BlockComponentFactoryRegistry registry) -> registry.registerFor(blockEntityType, componentKey, capabilityFactory));
+    /**
+     * register capability to {@link BlockEntity} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param blockEntityType   block entity class to match
+     * @return capability instance from capability manager
+     * @param <T> block entity type
+     * @param <C> capability type
+     */
+    public <T extends BlockEntity, C extends CapabilityComponent> ComponentKey<C> registerBlockEntityCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<T, C> capabilityFactory, Class<T> blockEntityType) {
+        return this.registerCapability(BlockEntity.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof BlockComponentFactoryRegistry registry) registry.registerFor(blockEntityType, componentKey, capabilityFactory);
+        });
     }
 
-    public <C extends CapabilityComponent> ComponentKey<C> registerLevelChunkCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<ChunkAccess, C> capabilityFactory) {
-        return this.registerCapability(LevelChunk.class, capabilityKey, capabilityType, componentKey -> (ChunkComponentFactoryRegistry registry) -> registry.register(componentKey, capabilityFactory));
+    /**
+     * register capability to {@link LevelChunk} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param <C> capability type
+     * @return capability instance from capability manager
+     */
+    public <C extends CapabilityComponent> ComponentKey<C> registerLevelChunkCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<ChunkAccess, C> capabilityFactory) {
+        return this.registerCapability(LevelChunk.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof ChunkComponentFactoryRegistry registry) registry.register(componentKey, capabilityFactory);
+        });
     }
 
-    public <C extends CapabilityComponent> ComponentKey<C> registerLevelCapability(String capabilityKey, Class<C> capabilityType, CapabilityFactory<Level, C> capabilityFactory) {
-        return this.registerCapability(Level.class, capabilityKey, capabilityType, componentKey -> (WorldComponentFactoryRegistry registry) -> registry.register(componentKey, capabilityFactory));
+    /**
+     * register capability to {@link Level} objects
+     * @param capabilityKey path for internal name of this capability, will be used for serialization
+     * @param capabilityType interface for this capability
+     * @param capabilityFactory capability factory called when attaching to an object
+     * @param <C> capability type
+     * @return capability instance from capability manager
+     */
+    public <C extends CapabilityComponent> ComponentKey<C> registerLevelCapability(String capabilityKey, Class<C> capabilityType, ComponentFactory<Level, C> capabilityFactory) {
+        return this.registerCapability(Level.class, capabilityKey, capabilityType, componentKey -> o -> {
+            if (o instanceof WorldComponentFactoryRegistry registry) registry.register(componentKey, capabilityFactory);
+        });
     }
 
     /**
@@ -117,7 +185,7 @@ public class CapabilityController implements ItemComponentInitializer, EntityCom
      * @param <C> capability type
      * @return capability instance from capability manager
      */
-    private <C extends CapabilityComponent> ComponentKey<C> registerCapability(Class<?> objectType, String capabilityKey, Class<C> capabilityType, Function<ComponentKey<C>, ComponentFactoryRegistration<?>> factoryRegistration) {
+    private <C extends CapabilityComponent> ComponentKey<C> registerCapability(Class<?> objectType, String capabilityKey, Class<C> capabilityType, Function<ComponentKey<C>, Consumer<Object>> factoryRegistration) {
         final ComponentKey<C> componentKey = ComponentRegistryV3.INSTANCE.getOrCreate(this.locate(capabilityKey), capabilityType);
         this.typeToRegistration.put(objectType, factoryRegistration.apply(componentKey));
         return componentKey;
@@ -157,10 +225,17 @@ public class CapabilityController implements ItemComponentInitializer, EntityCom
         registerComponentFactories(Level.class, registry);
     }
 
+    /**
+     * register for all CapabilityController's, static to not confuse with actual instance as they're separate kinda
+     * the instance this is called on is invoked by cardinal components, all other instances are created by mods themselves and need to be called upon here via {@link #MOD_TO_CAPABILITIES}
+     * @param baseType clazz type in map (based on Forge's default capability providers)
+     * @param registry component factory registry, needs to match precisely what's been used during registration as there's an unchecked cast
+     * @param <T> the component factory registry type
+     */
     private static <T> void registerComponentFactories(Class<?> baseType, T registry) {
         for (CapabilityController controller : MOD_TO_CAPABILITIES.values()) {
-            for (ComponentFactoryRegistration<?> factoryRegistration : controller.typeToRegistration.get(baseType)) {
-                ((ComponentFactoryRegistration<T>) factoryRegistration).registerComponentFactories(registry);
+            for (Consumer<Object> factoryRegistration : controller.typeToRegistration.get(baseType)) {
+                factoryRegistration.accept(registry);
             }
         }
     }
@@ -176,10 +251,5 @@ public class CapabilityController implements ItemComponentInitializer, EntityCom
             PuzzlesLib.LOGGER.info("Creating capability controller for mod id {}", namespace);
             return manager;
         });
-    }
-
-    @FunctionalInterface
-    private interface ComponentFactoryRegistration<T> {
-        void registerComponentFactories(T registry);
     }
 }

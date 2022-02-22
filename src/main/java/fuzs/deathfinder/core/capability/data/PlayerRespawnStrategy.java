@@ -29,8 +29,14 @@ public class PlayerRespawnStrategy {
      */
     public static final PlayerRespawnStrategy NEVER = new PlayerRespawnStrategy(RespawnCopyStrategy.NEVER_COPY);
 
+    /**
+     * cardinal components api equivalent
+     */
     private final RespawnCopyStrategy<Component> componentStrategy;
 
+    /**
+     * @param componentStrategy api equivalent
+     */
     private PlayerRespawnStrategy(RespawnCopyStrategy<Component> componentStrategy) {
         this.componentStrategy = componentStrategy;
     }
