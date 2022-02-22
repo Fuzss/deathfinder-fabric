@@ -1,6 +1,5 @@
 package fuzs.deathfinder.core.capability.data;
 
-import dev.onyxstudios.cca.api.v3.component.Component;
 import dev.onyxstudios.cca.api.v3.component.ComponentFactory;
 
 @FunctionalInterface
