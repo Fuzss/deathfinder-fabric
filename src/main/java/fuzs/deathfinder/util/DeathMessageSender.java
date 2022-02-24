@@ -1,8 +1,9 @@
 package fuzs.deathfinder.util;
 
+import fuzs.deathfinder.DeathFinder;
+import fuzs.deathfinder.network.message.S2CAdvancedChatMessage;
 import net.minecraft.Util;
 import net.minecraft.network.chat.ChatType;
-import net.minecraft.network.protocol.game.ClientboundChatPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -55,7 +56,7 @@ public class DeathMessageSender {
     }
 
     private void sendToAll(DeathMessageBuilder builder, Stream<ServerPlayer> players) {
-        players.forEach(player -> player.connection.send(new ClientboundChatPacket(builder.build(player), ChatType.SYSTEM, Util.NIL_UUID)));
+        players.forEach(player -> DeathFinder.NETWORK.sendTo(new S2CAdvancedChatMessage(builder.build(player), ChatType.SYSTEM, Util.NIL_UUID), player));
     }
 
     public static DeathMessageSender from(MinecraftServer server) {

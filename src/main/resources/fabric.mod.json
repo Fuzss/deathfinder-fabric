@@ -24,9 +24,6 @@
     ],
     "client": [
       "${clientEntryPoint}"
-    ],
-    "cardinal-components": [
-      "${capabilityController}"
     ]
   },
   "mixins": [
@@ -37,14 +34,11 @@
     "fabricloader": ">=${minFabricVersion}",
     "fabric": ">=${minFabricApiVersion}",
     "puzzleslib": ">=${minPuzzlesVersion}",
+    "forgeconfigapiport": "*",
     "minecraft": ">=${minMinecraftVersion} <${nextMinecraftVersion}",
     "java": ">=17",
     "cardinal-components-base": "*",
-    "cardinal-components-block": "*",
-    "cardinal-components-chunk": "*",
-    "cardinal-components-entity": "*",
-    "cardinal-components-item": "*",
-    "cardinal-components-world": "*"
+    "cardinal-components-entity": "*"
   },
 
   "custom": {

@@ -4,13 +4,17 @@ import fuzs.deathfinder.api.event.LivingDeathCallback;
 import fuzs.deathfinder.config.ClientConfig;
 import fuzs.deathfinder.config.ServerConfig;
 import fuzs.deathfinder.handler.DeathMessageHandler;
+import fuzs.deathfinder.network.chat.AdvancedClickEvent;
+import fuzs.deathfinder.network.chat.TeleportClickEvent;
 import fuzs.deathfinder.network.client.message.C2SDeathPointTeleportMessage;
+import fuzs.deathfinder.network.message.S2CAdvancedChatMessage;
 import fuzs.deathfinder.registry.ModRegistry;
 import fuzs.puzzleslib.config.ConfigHolder;
 import fuzs.puzzleslib.config.ConfigHolderImpl;
 import fuzs.puzzleslib.network.MessageDirection;
 import fuzs.puzzleslib.network.NetworkHandler;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import org.apache.logging.log4j.LogManager;
@@ -35,6 +39,7 @@ public class DeathFinder implements ModInitializer {
         registerHandlers();
         registerMessages();
         ModRegistry.touch();
+        AdvancedClickEvent.register(new ResourceLocation(MOD_ID, "teleport"), TeleportClickEvent.class, TeleportClickEvent::new);
     }
 
     private static void registerHandlers() {
@@ -46,6 +51,7 @@ public class DeathFinder implements ModInitializer {
     }
 
     private static void registerMessages() {
+        NETWORK.register(S2CAdvancedChatMessage.class, S2CAdvancedChatMessage::new, MessageDirection.TO_CLIENT);
         NETWORK.register(C2SDeathPointTeleportMessage.class, C2SDeathPointTeleportMessage::new, MessageDirection.TO_SERVER);
     }
 }

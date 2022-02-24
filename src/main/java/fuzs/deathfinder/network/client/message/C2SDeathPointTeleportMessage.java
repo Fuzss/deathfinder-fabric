@@ -54,7 +54,7 @@ public class C2SDeathPointTeleportMessage implements Message {
                     return Either.right(Unit.INSTANCE);
                 } else if (teleportRestriction == ServerConfig.TeleportRestriction.EVERYONE) {
                     return ModRegistry.PLAYER_DEATH_TRACKER_CAPABILITY.maybeGet(player).map(tracker -> {
-                        final Either<TeleportToDeathProblem, Unit> either = event.acceptsTracker(tracker);
+                        final Either<TeleportToDeathProblem, Unit> either = event.acceptsTracker(player, tracker);
                         either.ifRight(unit -> tracker.invalidate());
                         return either;
                     }).orElse(Either.left(TeleportToDeathProblem.OTHER_PROBLEM));
