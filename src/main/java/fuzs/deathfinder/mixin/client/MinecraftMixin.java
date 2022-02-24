@@ -1,6 +1,6 @@
 package fuzs.deathfinder.mixin.client;
 
-import fuzs.deathfinder.api.client.event.ScreenOpenCallback;
+import fuzs.deathfinder.api.client.event.AttemptScreenOpenCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,6 +12,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MinecraftMixin {
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     public void setScreen$head(Screen screen, CallbackInfo callbackInfo) {
-        if (!ScreenOpenCallback.EVENT.invoker().onScreenOpen(screen)) callbackInfo.cancel();
+        if (!AttemptScreenOpenCallback.EVENT.invoker().onAttemptScreenOpen(screen)) callbackInfo.cancel();
     }
 }

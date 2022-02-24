@@ -1,6 +1,6 @@
 package fuzs.deathfinder.client;
 
-import fuzs.deathfinder.api.client.event.ScreenOpenCallback;
+import fuzs.deathfinder.api.client.event.AttemptScreenOpenCallback;
 import fuzs.deathfinder.client.handler.DeathCommandHandler;
 import fuzs.deathfinder.client.handler.DeathScreenHandler;
 import net.fabricmc.api.ClientModInitializer;
@@ -26,7 +26,7 @@ public class DeathFinderClient implements ClientModInitializer {
                 ScreenEvents.afterRender(screen).register(deathScreenHandler::onDrawScreen);
             }
         });
-        ScreenOpenCallback.EVENT.register(deathScreenHandler::onScreenOpen);
+        AttemptScreenOpenCallback.EVENT.register(deathScreenHandler::onScreenOpen);
         final DeathCommandHandler deathCommandHandler = new DeathCommandHandler();
         ScreenEvents.BEFORE_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (screen instanceof ChatScreen) {

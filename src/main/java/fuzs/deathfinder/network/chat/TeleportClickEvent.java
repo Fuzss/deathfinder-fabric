@@ -6,8 +6,6 @@ import fuzs.deathfinder.DeathFinder;
 import fuzs.deathfinder.capability.PlayerDeathTracker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
@@ -59,18 +57,6 @@ public class TeleportClickEvent extends AdvancedClickEvent {
         this.x = GsonHelper.getAsInt(jsonObject, "x", 0);
         this.y = GsonHelper.getAsInt(jsonObject, "y", 0);
         this.z = GsonHelper.getAsInt(jsonObject, "z", 0);
-    }
-
-    public void serialize(FriendlyByteBuf buf) {
-        buf.writeUUID(this.uuid);
-        buf.writeResourceLocation(this.dimension.location());
-        buf.writeInt(this.x);
-        buf.writeInt(this.y);
-        buf.writeInt(this.z);
-    }
-
-    public static TeleportClickEvent deserialize(FriendlyByteBuf buf) {
-        return new TeleportClickEvent(buf.readUUID(), ResourceKey.create(Registry.DIMENSION_REGISTRY, buf.readResourceLocation()), buf.readInt(), buf.readInt(), buf.readInt());
     }
 
     private static String makeCommand(ResourceKey<Level> dimension, int x, int y, int z) {

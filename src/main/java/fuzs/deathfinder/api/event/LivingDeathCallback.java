@@ -16,5 +16,11 @@ public interface LivingDeathCallback {
         return true;
     });
 
+    /**
+     * even is fired whenever a living entity dies
+     * @param entity the entity that has been killed
+     * @param source the {@link DamageSource} the <code>entity</code> has been killed by
+     * @return is this death allowed to happen
+     */
     boolean onLivingDeath(LivingEntity entity, DamageSource source);
 }
